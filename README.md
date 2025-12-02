@@ -1,4 +1,4 @@
-# Js-confuser cff deobfuscator
+# Js-confuser deobfuscator
 
 ## Instruction
 
@@ -11,9 +11,9 @@ npm install
 
 And then put the code to deobfuscate at `input/obfuscated.js`
 
-And then run `index.ts` with:
+And then run `Sources/index.ts` with:
 ```bash
-npx tsx index.ts
+npx tsx Sources/index.ts
 ```
 
 You will see output like:
@@ -308,7 +308,7 @@ Open `output/deobfuscated.js`, and you will have the deobfuscated code.
 
 ## Limitation
 
-If you try a complex code to this script, then the script never ends (since its causes infinite loop for some reason).  
+If you try a complex code to this script, then the script never ends (since its causes infinite loop for some reason) or aborts.  
 You may try to deobfuscate each CFF individually.   
 
 1. This script doesn't handle variables correctly. We will fix this later, but for now, you must handle this manually
