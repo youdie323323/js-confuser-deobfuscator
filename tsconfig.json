@@ -20,7 +20,7 @@
     },
     "include": [
         "eslint.config.mjs",
-        "index.ts",
+        "Sources/**/*",
         "input/**/*",
         "output/**/*",
     ]

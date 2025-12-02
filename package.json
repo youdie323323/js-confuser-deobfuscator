@@ -1,6 +1,6 @@
 {
-  "name": "js-confuser-cff-deobfuscator",
-  "version": "1.0.1",
+  "name": "js-confuser-deobfuscator",
+  "version": "1.0.2",
   "dependencies": {
     "@babel/generator": "^7.28.3",
     "@babel/parser": "^7.28.4",
