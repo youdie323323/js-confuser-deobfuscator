@@ -1,5 +1,7 @@
 # Js-confuser deobfuscator
 
+**This tool is under development**
+
 ## Instruction
 
 1. Download and unzip this project
