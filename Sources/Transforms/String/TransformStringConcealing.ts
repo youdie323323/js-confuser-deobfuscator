@@ -1,5 +1,22 @@
 import type { Transform } from "../Transform";
 import * as t from "@babel/types";
+import { isUndefinedIdentifier } from "../TransformDuplicateLiteralsRemoval";
+
+const isStaticLiteral = (node: t.Node) => {
+    if (t.isStringLiteral(node) || t.isNumericLiteral(node) || t.isBooleanLiteral(node) || t.isNullLiteral(node))
+        return true;
+
+    if (isUndefinedIdentifier(node))
+        return true;
+
+    if (t.isUnaryExpression(node, { operator: "void" }) || (t.isUnaryExpression(node) && isStaticLiteral(node.argument)))
+        return true;
+
+    if (t.isArrayExpression(node))
+        return node.elements.every(isStaticLiteral);
+
+    return false;
+};
 
 export default {
     name: "StringConcealing",
@@ -13,6 +30,25 @@ export default {
 
             return {
                 FunctionDeclaration(path) {
+                    /*
+                        Pattern 1:
+                        function __p_fp7u_STR_41(index) {
+                          if (typeof __p_mxd8_cache[index] === 'undefined') {
+                            return __p_mxd8_cache[index] = __p_fp7u_STR_41_decode(__p_jioc_array[index]);
+                          }
+                          return __p_mxd8_cache[index];
+                        }
+                        
+                        Pattern 2:
+                        function __p_6Xea_STR_25(index) {
+                            if (typeof __p_WEDx_cache[index] === 'undefined') {
+                              return __p_WEDx_cache[index] = __p_6Xea_STR_25_decode(__p_kWSL_array[index]);
+                            } else {
+                              return __p_WEDx_cache[index];
+                            }
+                        }
+                    */
+
                     const {
                         node: {
                             id: { name },
@@ -22,7 +58,7 @@ export default {
                         scope,
                     } = path;
 
-                    if (params.length !== 1 || body.length !== 2)
+                    if (params.length !== 1)
                         return;
 
                     const { 0: firstParam } = params;
@@ -31,39 +67,83 @@ export default {
 
                     const { name: indexParamName } = firstParam;
 
+                    if (body.length !== 2 && body.length !== 1)
+                        return;
+
+                    const { 0: firstBodyStatement } = body;
+
+                    if (!t.isIfStatement(firstBodyStatement))
+                        return;
+
                     const {
-                        0: firstBodyStatement,
-                        1: secondBodyStatement,
-                    } = body;
+                        test: firstBodyStatementTest,
+                        alternate: firstBodyStatementAlternate,
+                    } = firstBodyStatement;
 
-                    if (!(
-                        t.isIfStatement(firstBodyStatement) &&
-                        t.isReturnStatement(secondBodyStatement) &&
-                        secondBodyStatement.argument
-                    ))
+                    // Check if this is Pattern 1 or Pattern 2
+                    const isPattern1 = body.length === 2 && !firstBodyStatementAlternate,
+                        isPattern2 = body.length === 1 && !!firstBodyStatementAlternate;
+
+                    if (!(isPattern1 || isPattern2))
                         return;
 
                     if (!(
-                        !firstBodyStatement.alternate &&
-                        t.isBinaryExpression(firstBodyStatement.test, { operator: "===" }) &&
-                        t.isUnaryExpression(firstBodyStatement.test.left, { operator: "typeof", prefix: true }) &&
-                        t.isMemberExpression(firstBodyStatement.test.left.argument, { computed: true }) &&
-                        t.isIdentifier(firstBodyStatement.test.left.argument.object) &&
-                        t.isIdentifier(firstBodyStatement.test.left.argument.property, { name: indexParamName }) &&
-                        t.isStringLiteral(firstBodyStatement.test.right, { value: "undefined" })
+                        t.isBinaryExpression(firstBodyStatementTest, { operator: "===" }) &&
+                        t.isUnaryExpression(firstBodyStatementTest.left, { operator: "typeof", prefix: true }) &&
+                        t.isMemberExpression(firstBodyStatementTest.left.argument, { computed: true }) &&
+                        t.isIdentifier(firstBodyStatementTest.left.argument.object) &&
+                        t.isIdentifier(firstBodyStatementTest.left.argument.property, { name: indexParamName }) &&
+                        t.isStringLiteral(firstBodyStatementTest.right, { value: "undefined" })
                     ))
                         return;
 
-                    const { test: { left: { argument: { object: { name: cacheObjectName } } } } } = firstBodyStatement;
+                    const { left: { argument: { object: { name: cacheObjectName } } } } = firstBodyStatementTest;
 
-                    const { argument: secondBodyStatementArgument } = secondBodyStatement;
+                    if (isPattern1) {
+                        const { 1: secondBodyStatement } = body;
 
-                    if (!(
-                        t.isMemberExpression(secondBodyStatementArgument, { computed: true }) &&
-                        t.isIdentifier(secondBodyStatementArgument.object, { name: cacheObjectName }) &&
-                        t.isIdentifier(secondBodyStatementArgument.property, { name: indexParamName })
-                    ))
-                        return;
+                        if (!(
+                            t.isReturnStatement(secondBodyStatement) &&
+                            secondBodyStatement.argument
+                        ))
+                            return;
+
+                        const { argument: secondBodyStatementArgument } = secondBodyStatement;
+
+                        if (!(
+                            t.isMemberExpression(secondBodyStatementArgument, { computed: true }) &&
+                            t.isIdentifier(secondBodyStatementArgument.object, { name: cacheObjectName }) &&
+                            t.isIdentifier(secondBodyStatementArgument.property, { name: indexParamName })
+                        ))
+                            return;
+                    } else if (isPattern2) {
+                        const { alternate } = firstBodyStatement;
+
+                        if (!t.isBlockStatement(alternate))
+                            return;
+
+                        const { body: alternateBody } = alternate;
+
+                        if (alternateBody.length !== 1)
+                            return;
+
+                        const { 0: alternateBodyStatement } = alternateBody;
+
+                        if (!(
+                            t.isReturnStatement(alternateBodyStatement) &&
+                            alternateBodyStatement.argument
+                        ))
+                            return;
+
+                        const { argument: alternateBodyStatementArgument } = alternateBodyStatement;
+
+                        if (!(
+                            t.isMemberExpression(alternateBodyStatementArgument, { computed: true }) &&
+                            t.isIdentifier(alternateBodyStatementArgument.object, { name: cacheObjectName }) &&
+                            t.isIdentifier(alternateBodyStatementArgument.property, { name: indexParamName })
+                        ))
+                            return;
+                    }
 
                     const { consequent: firstBodyStatementConsequent } = firstBodyStatement;
 

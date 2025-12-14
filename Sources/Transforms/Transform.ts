@@ -22,12 +22,13 @@ import transformDeadCode from "./TransformDeadCode";
 import transformFlatten from "./TransformFlatten";
 import transformPreparation from "./TransformPreparation";
 
+// TODO: movedDeclarations can be reversed by using the same method as variableMasking
+
 /*
   Irreversible transforms:
     objectExtraction
     renameVariables
     renameLabels
-    movedDeclarations
 */
 
 // This is ordered. Don't change

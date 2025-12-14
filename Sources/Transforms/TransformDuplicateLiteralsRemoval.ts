@@ -1,11 +1,11 @@
 import type { Transform } from "./Transform";
 import * as t from "@babel/types";
 
-type UndefinedIdentifier = t.Identifier & {
+export type UndefinedIdentifier = t.Identifier & {
     name: "undefined";
 };
 
-function isUndefinedIdentifier(node: t.Node): node is UndefinedIdentifier {
+export function isUndefinedIdentifier(node: t.Node): node is UndefinedIdentifier {
     return t.isIdentifier(node, { name: "undefined" });
 }
 

@@ -1,6 +1,6 @@
 import type { SharedEstimableVisitor, Transform } from "./Transform";
 import * as t from "@babel/types";
-import type { NodePath, Visitor } from "@babel/traverse";
+import type { NodePath } from "@babel/traverse";
 import generate from "@babel/generator";
 
 function isPredicateFunctionDeclaration(functionDeclaration: t.FunctionDeclaration): functionDeclaration is t.FunctionDeclaration & {

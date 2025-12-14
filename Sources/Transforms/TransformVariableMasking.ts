@@ -14,7 +14,7 @@ interface ArgumentsMember {
     assignmentPath: NodePath<t.AssignmentExpression> | null;
 }
 
-const containerContainsExpression = (containerPath: NodePath, targetNode: t.Node): boolean => {
+export const containerContainsExpression = (containerPath: NodePath, targetNode: t.Node): boolean => {
     const { node: container } = containerPath;
 
     const { node: containerPathFunctionParentNode } = containerPath.getFunctionParent();
@@ -29,7 +29,10 @@ const containerContainsExpression = (containerPath: NodePath, targetNode: t.Node
             const pathFunctionParent = path.getFunctionParent();
 
             if (
-                (pathFunctionParent && t.isNodesEquivalent(containerPathFunctionParentNode, pathFunctionParent.node)) && // Eliminate slowly-evalutable case
+                ( // Eliminate slowly-evalutable case
+                    pathFunctionParent &&
+                    t.isNodesEquivalent(containerPathFunctionParentNode, pathFunctionParent.node)
+                ) &&
                 t.isNodesEquivalent(path.node, targetNode)
             ) {
                 found = true;
@@ -73,96 +76,97 @@ export default {
 
                     const indexToArgumentsMember: Map<ArgumentsMemberKey, ArgumentsMember> = new Map;
 
-                    const collectArgumentsMember = (skipNested: boolean) => path.traverse({
-                        MemberExpression(innerPath) {
-                            const { node: innerNode, scope: innerScope } = innerPath;
+                    const collectArgumentsMember =
+                        (skipNested: boolean) => path.traverse({
+                            MemberExpression(innerPath) {
+                                const { node: innerNode, scope: innerScope } = innerPath;
 
-                            { // Check function parent
-                                const { node: innerPathFunctionParentNode } = innerPath.getFunctionParent();
+                                { // Check function parent
+                                    const { node: innerPathFunctionParentNode } = innerPath.getFunctionParent();
 
-                                if (t.isNodesEquivalent(innerPathFunctionParentNode, node) !== skipNested)
+                                    if (t.isNodesEquivalent(innerPathFunctionParentNode, node) !== skipNested)
+                                        return;
+                                }
+
+                                const { object: innerObject, property: innerProperty } = innerNode;
+
+                                if (!t.isIdentifier(innerObject, { name: restParamArgumentName }))
                                     return;
-                            }
 
-                            const { object: innerObject, property: innerProperty } = innerNode;
+                                const innerRestParamArgumentNameBinding = innerScope.getBinding(restParamArgumentName);
+                                if (innerRestParamArgumentNameBinding !== restParamArgumentNameBinding)
+                                    return;
 
-                            if (!t.isIdentifier(innerObject, { name: restParamArgumentName }))
-                                return;
+                                const { parentPath: innerPathParentPath } = innerPath;
 
-                            const innerRestParamArgumentNameBinding = innerScope.getBinding(restParamArgumentName);
-                            if (innerRestParamArgumentNameBinding !== restParamArgumentNameBinding)
-                                return;
+                                const isWrite =
+                                    innerPathParentPath.isAssignmentExpression() &&
+                                    innerPathParentPath.get("left") === innerPath;
 
-                            const { parentPath: innerPathParentPath } = innerPath;
+                                const isLengthWritePropertyKeyName =
+                                    (name: string) =>
+                                        skipNested /* Length write statement only appear on target function */ &&
+                                        isWrite &&
+                                        name === "length";
 
-                            const isWrite =
-                                innerPathParentPath.isAssignmentExpression() &&
-                                innerPathParentPath.get("left") === innerPath;
+                                let argumentsMemberKey: ArgumentsMemberKey;
 
-                            const isLengthWritePropertyKeyName =
-                                (name: string) =>
-                                    skipNested /* Length write statement only appear on target function */ &&
-                                    isWrite &&
-                                    name === "length";
+                                if (innerNode.computed)
+                                    if (t.isStringLiteral(innerProperty)) {
+                                        argumentsMemberKey = innerProperty.value;
 
-                            let argumentsMemberKey: ArgumentsMemberKey;
+                                        if (isLengthWritePropertyKeyName(argumentsMemberKey)) {
+                                            pathsToRemove.push(innerPathParentPath.parentPath);
 
-                            if (innerNode.computed)
-                                if (t.isStringLiteral(innerProperty)) {
-                                    argumentsMemberKey = innerProperty.value;
-
-                                    if (isLengthWritePropertyKeyName(argumentsMemberKey)) {
+                                            return;
+                                        }
+                                    } else if (isNumericLiteralOrMinusNumericUnaryExpression(innerProperty))
+                                        argumentsMemberKey = numericLiteralOrMinusNumericUnaryExpressionToValue(innerProperty);
+                                    else
+                                        return;
+                                else if (t.isIdentifier(innerProperty)) {
+                                    if (isLengthWritePropertyKeyName(innerProperty.name)) {
                                         pathsToRemove.push(innerPathParentPath.parentPath);
 
                                         return;
                                     }
-                                } else if (isNumericLiteralOrMinusNumericUnaryExpression(innerProperty))
-                                    argumentsMemberKey = numericLiteralOrMinusNumericUnaryExpressionToValue(innerProperty);
-                                else
-                                    return;
-                            else if (t.isIdentifier(innerProperty)) {
-                                if (isLengthWritePropertyKeyName(innerProperty.name)) {
-                                    pathsToRemove.push(innerPathParentPath.parentPath);
 
+                                    argumentsMemberKey = innerProperty.name;
+                                } else
                                     return;
+
+                                if (!indexToArgumentsMember.has(argumentsMemberKey)) {
+                                    let type: ArgumentsMemberType = "param";
+
+                                    if (isWrite) {
+                                        const innerPathParentRightPath = innerPathParentPath.get("right");
+
+                                        // If the assignment doesn't reference itself, it's a variable
+                                        if (!containerContainsExpression(innerPathParentRightPath, innerNode))
+                                            type = "variable";
+                                        else if (isNotEstimate)
+                                            console.log(`Arguments member key ${argumentsMemberKey} self referencing, decided as parameter`);
+                                    }
+
+                                    const { name } =
+                                        type === "variable"
+                                            ? scope.generateUidIdentifier(`var_${argumentsMemberKey}`)
+                                            : scope.generateUidIdentifier(`param_${argumentsMemberKey}`);
+
+                                    if (isNotEstimate)
+                                        console.log(`Arguments member key ${argumentsMemberKey} type name:`, name);
+
+                                    indexToArgumentsMember.set(argumentsMemberKey, { type, name, assignmentPath: null });
                                 }
 
-                                argumentsMemberKey = innerProperty.name;
-                            } else
-                                return;
+                                const argumentsMember = indexToArgumentsMember.get(argumentsMemberKey);
 
-                            if (!indexToArgumentsMember.has(argumentsMemberKey)) {
-                                let type: ArgumentsMemberType = "param";
-
-                                if (isWrite) {
-                                    const innerPathParentRightPath = innerPathParentPath.get("right");
-
-                                    // If the assignment doesn't reference itself, it's a variable
-                                    if (!containerContainsExpression(innerPathParentRightPath, innerNode))
-                                        type = "variable";
-                                    else if (isNotEstimate)
-                                        console.log(`Arguments member key ${argumentsMemberKey} self referencing, decided as parameter`);
-                                }
-
-                                const { name } =
-                                    type === "variable"
-                                        ? scope.generateUidIdentifier(`var_${argumentsMemberKey}`)
-                                        : scope.generateUidIdentifier(`param_${argumentsMemberKey}`);
-
-                                if (isNotEstimate)
-                                    console.log(`Arguments member key ${argumentsMemberKey} type name:`, name);
-
-                                indexToArgumentsMember.set(argumentsMemberKey, { type, name, assignmentPath: null });
-                            }
-
-                            const argumentsMember = indexToArgumentsMember.get(argumentsMemberKey);
-
-                            if (argumentsMember.type === "variable" && isWrite)
-                                if (!argumentsMember.assignmentPath)
-                                    if (innerPathParentPath.isAssignmentExpression())
-                                        argumentsMember.assignmentPath = innerPathParentPath;
-                        },
-                    });
+                                if (argumentsMember.type === "variable" && isWrite)
+                                    if (!argumentsMember.assignmentPath)
+                                        if (innerPathParentPath.isAssignmentExpression())
+                                            argumentsMember.assignmentPath = innerPathParentPath;
+                            },
+                        });
 
                     // Collect same function-parent statements first, then collect inners
                     collectArgumentsMember(true);
