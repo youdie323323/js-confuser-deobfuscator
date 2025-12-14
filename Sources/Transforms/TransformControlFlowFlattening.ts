@@ -1,10 +1,8 @@
 import type { Transform } from "./Transform";
 import * as t from "@babel/types";
-import type { NodePath, Visitor } from "@babel/traverse";
+import type { NodePath } from "@babel/traverse";
 import traverse from "@babel/traverse";
 import generate from "@babel/generator";
-
-type LiteralConstants = Record<string, number>;
 
 type Flow = t.SwitchCase;
 
@@ -58,16 +56,23 @@ type FlowTransition =
         flowBlockBody: Array<t.Statement>;
     };
 
-type FlowState =
-    {
-        literalConstants: LiteralConstants;
+interface FlowState {
+    literalConstants: LiteralConstants;
 
-        flowPositions: FlowPositions;
+    flowPositions: FlowPositions;
 
-        flowWithContext: FlowWithContext;
+    flowWithContext: FlowWithContext;
 
-        sum: number;
-    };
+    sum: number;
+}
+
+interface InnerCFFCallOneself {
+    flowPositions: FlowPositions;
+
+    // With context and literal constants is dynamic, but object is static. So we'll handle this in the code
+}
+
+type LiteralConstants = Record<string, number>;
 
 type NumericLiteralOrMinusNumericUnaryExpression = t.NumericLiteral | (t.UnaryExpression & {
     argument: t.NumericLiteral & {
@@ -116,6 +121,14 @@ function findNextNonEmptyFlow(
     return null;
 }
 
+const isConstantHolderAssignmentPatternParam = (param: t.FunctionParameter): param is t.AssignmentPattern & {
+    left: t.Identifier;
+    right: t.ObjectExpression;
+} =>
+    t.isAssignmentPattern(param) &&
+    t.isIdentifier(param.left) &&
+    t.isObjectExpression(param.right);
+
 export default {
     name: "ControlFlowFlattening",
     preRunWebcrack: false,
@@ -133,44 +146,45 @@ export default {
 
                     const {
                         params,
-                        params: { length: paramsLength },
                         id: { name },
                     } = node;
+
+                    let { params: { length: paramsLength } } = node;
 
                     if (paramsLength === 0)
                         return;
 
-                    const binding = scope.getBinding(name);
-                    if (!binding)
+                    if (!isConstantHolderAssignmentPatternParam(params[paramsLength - 1])) // Last parameter is ignorable
+                        paramsLength--;
+
+                    const nameBinding = scope.getBinding(name);
+                    if (!nameBinding)
                         return;
 
                     const flowPositionParams = params.slice(0, paramsLength - 1);
                     const lastParam = params[paramsLength - 1];
 
-                    const { referencePaths } = binding;
+                    const { referencePaths } = nameBinding;
 
-                    if (referencePaths.length !== 1)
+                    const cffStartFunction =
+                        referencePaths
+                            .find(({ parent: innerParent }) =>
+                                t.isCallExpression(innerParent) &&
+                                innerParent.arguments.length === flowPositionParams.length,
+                            ) as NodePath & { parent: t.CallExpression };
+                    if (!cffStartFunction)
                         return;
-
-                    const { 0: cffStartFunction } = referencePaths;
 
                     const { parent: cffStartCall } = cffStartFunction;
 
                     if (!(
-                        t.isCallExpression(cffStartCall) &&
-                        cffStartCall.arguments.length === flowPositionParams.length
-                    ))
-                        return;
-
-                    if (!(
                         flowPositionParams.every(t.isIdentifier) &&
-                        t.isAssignmentPattern(lastParam) &&
-                        t.isIdentifier(lastParam.left) &&
-                        t.isObjectExpression(lastParam.right)
+                        isConstantHolderAssignmentPatternParam(lastParam)
                     ))
                         return;
 
                     const resultDeclaration = cffStartFunction.findParent(({ node }) => t.isVariableDeclaration(node));
+
                     if (!(
                         resultDeclaration &&
                         t.isVariableDeclaration(resultDeclaration.node)
@@ -185,10 +199,11 @@ export default {
                     const { body: resultDeclarationParentBody } = resultDeclarationParent;
 
                     const cffShouldReturnValueDeclarationPosition = resultDeclarationParentBody.indexOf(resultDeclaration.node) - 1;
-                    if (cffShouldReturnValueDeclarationPosition < 0)
+                    if (0 > cffShouldReturnValueDeclarationPosition)
                         return;
 
                     const cffShouldReturnValueDeclaration = resultDeclarationParentBody[cffShouldReturnValueDeclarationPosition];
+
                     if (!(
                         t.isVariableDeclaration(cffShouldReturnValueDeclaration) &&
                         cffShouldReturnValueDeclaration.declarations.length === 1 &&
@@ -329,7 +344,7 @@ export default {
                         return;
 
                     // A.k.a. constant holder
-                    const defaultFlowWithContext = constantHolderName as FlowWithContext;
+                    const defaultFlowWithContext: FlowWithContext = constantHolderName;
 
                     if (isNotEstimate) { // Log informations
                         console.log("Constant holder:", constantHolderName);
@@ -382,9 +397,12 @@ export default {
                                 removeStatementFromStatements(statement);
                         });
 
-                        traverse(t.file(t.program([t.blockStatement(statements)])), {
+                        /*
+                        const statementsBlockStatementProgramFile = t.file(t.program([t.blockStatement(statements)]));
+
+                        traverse(statementsBlockStatementProgramFile, {
                             // _0x832C0F2._0xBE98C8._0x664DFF = X => let _0x664DFF = X
-                            // TODO: maybe this is not enough
+                            // _0xBE98C8._0x664DFF = X => let _0x664DFF = X
                             AssignmentExpression(innerPath) {
                                 const { node: { left, right }, parentPath: innerParentPath } = innerPath;
 
@@ -393,27 +411,64 @@ export default {
 
                                 const { object: leftObject, property: leftProperty } = left;
 
-                                if (!(
-                                    t.isMemberExpression(leftObject) &&
-                                    t.isIdentifier(leftProperty)
-                                ))
+                                if (!t.isIdentifier(leftProperty))
                                     return;
 
-                                const { object: leftObjectObject, property: leftObjectProperty } = leftObject;
+                                // _0x832C0F2._0xBE98C8._0x664DFF = X
+                                if (t.isMemberExpression(leftObject)) {
+                                    const { object: leftObjectObject, property: leftObjectProperty } = leftObject;
 
-                                if (!(
-                                    t.isIdentifier(leftObjectObject, { name: constantHolderName }) &&
-                                    t.isIdentifier(leftObjectProperty, { name: constantHolderInternalPropertyName })
-                                ))
-                                    return;
+                                    if (
+                                        t.isIdentifier(leftObjectObject, { name: constantHolderName }) &&
+                                        t.isIdentifier(leftObjectProperty, { name: constantHolderInternalPropertyName })
+                                    ) {
+                                        innerParentPath.replaceWith(
+                                            t.variableDeclaration("let", [
+                                                t.variableDeclarator(leftProperty, right),
+                                            ]),
+                                        );
 
-                                innerParentPath.replaceWith(
-                                    t.variableDeclaration("let", [
-                                        t.variableDeclarator(leftProperty, right),
-                                    ]),
-                                );
+                                        return;
+                                    }
+                                }
+
+                                // _0xBE98C8._0x664DFF = X
+                                if (t.isIdentifier(leftObject, { name: constantHolderInternalPropertyName }))
+                                    innerParentPath.replaceWith(
+                                        t.variableDeclaration("let", [
+                                            t.variableDeclarator(leftProperty, right),
+                                        ]),
+                                    );
                             },
                         });
+
+                        traverse(statementsBlockStatementProgramFile, { // Used as value
+                            MemberExpression(innerPath) {
+                                const { node: { object, property } } = innerPath;
+
+                                if (!t.isIdentifier(property))
+                                    return;
+
+                                // _0x832C0F2._0xBE98C8._0x664DFF
+                                if (t.isMemberExpression(object)) {
+                                    const { object: objectObject, property: objectProperty } = object;
+
+                                    if (
+                                        t.isIdentifier(objectObject, { name: constantHolderName }) &&
+                                        t.isIdentifier(objectProperty, { name: constantHolderInternalPropertyName })
+                                    ) {
+                                        innerPath.replaceWith(property);
+
+                                        return;
+                                    }
+                                }
+
+                                // _0xBE98C8._0x664DFF
+                                if (t.isIdentifier(object, { name: constantHolderInternalPropertyName }))
+                                    innerPath.replaceWith(property);
+                            },
+                        });
+                        */
 
                         return statements;
                     };
@@ -570,7 +625,8 @@ export default {
                     };
 
                     const isNotFakeFlowWithContext =
-                        (flowWithContext: FlowWithContext) => flowWithContext === constantHolderInternalPropertyName;
+                        (flowWithContext: FlowWithContext) =>
+                            flowWithContext === constantHolderInternalPropertyName;
 
                     const computeFlowTransition = (
                         { consequent }: Flow,
@@ -584,6 +640,37 @@ export default {
                         const flowBlockBody: Array<t.Statement> = new Array;
 
                         for (const statement of consequent) {
+                            if ( // ConstantHolderInternalProperty[...] = function (...) { return cff(...).next().value; }
+                                t.isExpressionStatement(statement) &&
+                                t.isAssignmentExpression(statement.expression) &&
+                                t.isFunctionExpression(statement.expression.right)
+                            ) {
+                                const { expression: { right: statementRight } } = statement;
+
+                                const { body: { body: statementRightBody } } = statementRight;
+
+                                const returnStatement = statementRightBody.find(t.isReturnStatement);
+
+                                if (
+                                    returnStatement &&
+                                    returnStatement.argument
+                                ) {
+                                    const { argument: returnStatementArgument } = returnStatement;
+
+                                    if (
+                                        t.isMemberExpression(returnStatementArgument) &&
+                                        t.isIdentifier(returnStatementArgument.property, { name: "value" }) &&
+                                        t.isCallExpression(returnStatementArgument.object) &&
+                                        t.isMemberExpression(returnStatementArgument.object.callee) &&
+                                        t.isIdentifier(returnStatementArgument.object.callee.property, { name: "next" }) &&
+                                        t.isCallExpression(returnStatementArgument.object.callee.object) &&
+                                        t.isIdentifier(returnStatementArgument.object.callee.object.callee, { name })
+                                    ) {
+
+                                    }
+                                }
+                            }
+
                             traverse(t.file(t.program([statement])), {
                                 // Replace "slKK7_c + -142" => "143 + -142"
                                 // This will simplified on last step (webcrack)
@@ -833,10 +920,10 @@ export default {
                                 break;
 
                             { // Detect end
-                                const { test } = cffLoop.node;
+                                const { node: { test } } = cffLoop;
 
                                 if (!evaluteExpression(test, literalConstants, flowPositions)) {
-                                    console.log(`Loop condition met (false) at sum ${flowPositionsSum}. Exiting flow`);
+                                    console.log(`Loop condition met (false) at sum ${flowPositionsSum}, exiting flow`);
 
                                     break;
                                 }
@@ -893,7 +980,7 @@ export default {
                                     trueFlowWithContext,
                                     falseFlowWithContext,
 
-                                    remainFlowBlockBody: remainBlockBody,
+                                    remainFlowBlockBody,
                                 } = targetFlowTransition;
 
                                 { // Log branch information
@@ -967,7 +1054,7 @@ export default {
                                 );
 
                                 blockBody.push(
-                                    ...finalizeFlowStatements(remainBlockBody),
+                                    ...finalizeFlowStatements(remainFlowBlockBody),
                                     t.ifStatement(
                                         test,
                                         t.blockStatement(trueBlock),
@@ -1023,10 +1110,12 @@ export default {
 
                         const flowPositions: Record<string, number> = {};
 
-                        cffStartCall.arguments.forEach((node, i) => {
-                            if (isNumericLiteralOrMinusNumericUnaryExpression(node))
+                        const { arguments: cffStartCallArguments } = cffStartCall;
+
+                        cffStartCallArguments.forEach((argument, i) => {
+                            if (isNumericLiteralOrMinusNumericUnaryExpression(argument))
                                 flowPositions[flowPositionParamNames[i]] =
-                                    numericLiteralOrMinusNumericUnaryExpressionToValue(node);
+                                    numericLiteralOrMinusNumericUnaryExpressionToValue(argument);
                         });
 
                         // Finally we can replace body
