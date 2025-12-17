@@ -64,7 +64,7 @@ export default {
         on: isEstimate => {
             const isNotEstimate = !isEstimate;
 
-            const decodedCache: Map<number, string> = new Map;
+            const decodedCache = new Map<number, string>;
 
             return {
                 FunctionDeclaration(path) {

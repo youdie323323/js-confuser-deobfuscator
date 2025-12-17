@@ -33,7 +33,7 @@ import transformPreparation from "./TransformPreparation";
 
 // This is ordered. Don't change
 // https://github.com/MichaelXF/js-confuser/blob/master/src/order.ts
-export const ALL_TRANSFORMS: Array<Transform> = [
+export const ALL_TRANSFORMS: ReadonlyArray<Transform> = [
     transformPack,
     transformASTScrambler,
     transformControlFlowFlattening,
@@ -160,10 +160,10 @@ const webcrackAST = async (ast: parser.ParseResult) => {
  * This changes caller's value.
  */
 export async function transform(ast: parser.ParseResult, verbose: boolean = true) {
-    const visitorsExecutors: Array<() => Promise<void>> = new Array;
+    const visitorsExecutors = new Array<() => Promise<void>>;
 
-    const firstVisitors: Map<string, EstimableVisitor> = new Map;
-    const finalVisitors: Map<string, EstimableVisitor> = new Map;
+    const firstVisitors = new Map<string, EstimableVisitor>;
+    const finalVisitors = new Map<string, EstimableVisitor>;
 
     let singleProgressBar: cliProgress.SingleBar | null = null;
 

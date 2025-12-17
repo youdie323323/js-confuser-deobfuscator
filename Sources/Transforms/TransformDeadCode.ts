@@ -14,41 +14,34 @@ export default {
 
                 return {
                     IfStatement(path) {
-                        const { node, node: { consequent }, scope } = path;
+                        const { node } = path;
 
                         const testPath = path.get("test");
 
                         if (isFalsePredicate(testPath))
                             if (isNotEstimate) {
-                                removeDeadFunction: {
-                                    const isBlockConsequent = (
-                                        t.isBlockStatement(consequent) &&
-                                        t.isExpressionStatement(consequent.body[0])
-                                    );
+                                path.get("consequent").traverse({
+                                    CallExpression(innerPath) {
+                                        const { node: { callee }, scope: innerScope } = innerPath;
 
-                                    const isSingleConsequent = t.isExpressionStatement(consequent);
+                                        if (!t.isIdentifier(callee))
+                                            return;
 
-                                    if (!(isBlockConsequent || isSingleConsequent))
-                                        break removeDeadFunction;
+                                        const { name: calleeName } = callee;
 
-                                    const { expression: deadFunctionCall } =
-                                        (
-                                            isBlockConsequent
-                                                ? consequent.body[0]
-                                                : consequent
-                                        ) as t.ExpressionStatement;
+                                        const calleeNameBinding = innerScope.getBinding(calleeName);
+                                        if (!calleeNameBinding)
+                                            return;
 
-                                    if (!(
-                                        t.isCallExpression(deadFunctionCall) &&
-                                        deadFunctionCall.arguments.length === 0 &&
-                                        t.isIdentifier(deadFunctionCall.callee) // TODO: support "(1, deadFunction)()"
-                                    ))
-                                        break removeDeadFunction;
+                                        const { path: calleeNameBindingPath } = calleeNameBinding;
 
-                                    const deadFunctionNameBinding = scope.getBinding(deadFunctionCall.callee.name);
-                                    if (deadFunctionNameBinding)
-                                        deadFunctionNameBinding.path.remove();
-                                }
+                                        if (calleeNameBindingPath.isFunctionDeclaration()) {
+                                            calleeNameBindingPath.remove();
+
+                                            console.log("Removed dead function:", calleeName);
+                                        }
+                                    },
+                                });
 
                                 if (node.alternate)
                                     t.isBlockStatement(node.alternate)

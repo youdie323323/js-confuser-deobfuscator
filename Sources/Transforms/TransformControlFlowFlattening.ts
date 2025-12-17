@@ -368,7 +368,7 @@ export default {
 
                     const { node: cffDispatchSwitchNode } = cffDispatchSwitch;
 
-                    const finalizeFlowStatements = (statements: Array<t.Statement>): Array<t.Statement> => {
+                    const finalizeFlowStatements = (statements: Array<t.Statement>) => {
                         statements = statements.filter(statement => !t.isBreakStatement(statement));
 
                         const removeStatementFromStatements = (statement: t.Statement) =>
@@ -487,7 +487,7 @@ export default {
                         return statements;
                     };
 
-                    const summateFlowPositions = (flowPositions: FlowPositions): number =>
+                    const summateFlowPositions = (flowPositions: FlowPositions) =>
                         Object.values(flowPositions).reduce(
                             (accumulator, position) => accumulator + position,
                             0,
@@ -591,7 +591,7 @@ export default {
                     const stepFlowPositions = (
                         statements: Array<t.Statement>,
                         flowPositions: FlowPositions,
-                    ): FlowPositions => {
+                    ) => {
                         statements.forEach(statement => {
                             if (isFlowPositionStepStatement(statement))
                                 flowPositions[statement.expression.left.name] +=
@@ -651,7 +651,7 @@ export default {
 
                         flowWithContext: FlowWithContext,
                     ): FlowTransition => {
-                        const flowBlockBody: Array<t.Statement> = new Array;
+                        const flowBlockBody = new Array<t.Statement>;
 
                         for (const statement of consequent) {
                             if ( // ConstantHolderInternalProperty[...] = function (...) { return cff(...).next().value; }
@@ -949,7 +949,7 @@ export default {
                         stopAtFlowSum: number | null = null,
 
                         lastTargetFlowTransition: FlowTransition | null = null,
-                    ): Array<t.Statement> => {
+                    ) => {
                         const blockBody: Array<t.Statement> = new Array;
 
                         while (true) {

@@ -72,9 +72,9 @@ export default {
                     if (!restParamArgumentNameBinding)
                         return;
 
-                    const pathsToRemove: Array<NodePath> = new Array;
+                    const pathsToRemove = new Array<NodePath>;
 
-                    const indexToArgumentsMember: Map<ArgumentsMemberKey, ArgumentsMember> = new Map;
+                    const indexToArgumentsMember = new Map<ArgumentsMemberKey, ArgumentsMember>;
 
                     const collectArgumentsMember =
                         (skipNested: boolean) => path.traverse({
@@ -233,7 +233,7 @@ export default {
 
                         console.log(`Predicted function parameter length:`, predictedParamLength + 1);
 
-                        const restoredParams: Array<t.Identifier> = new Array;
+                        const restoredParams = new Array<t.Identifier>;
 
                         for (let i = 0; i <= predictedParamLength; i++) {
                             const iArgumentsMember = indexToArgumentsMember.get(i);
@@ -251,7 +251,7 @@ export default {
                             Array.from(indexToArgumentsMember.values())
                                 .filter(value => value.type === "variable");
 
-                        const declarationsToPrepend: Array<t.VariableDeclarator> = new Array;
+                        const declarationsToPrepend = new Array<t.VariableDeclarator>;
 
                         // Variable masking doesn't transform "const", so we can always use "let"
 

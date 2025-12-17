@@ -59,12 +59,15 @@ export default {
                         if (!(switchCases.length !== 0 && switchCases.every(isCalculatorFunctionCase)))
                             return;
 
-                        const idToOperator: Map<string, t.BinaryExpression["operator"]> = new Map;
+                        const idToOperator = new Map<string, t.BinaryExpression["operator"]>;
 
-                        switchCases.forEach(({
-                            test: { value: id },
-                            consequent: { 0: { argument: { operator } } },
-                        }) => idToOperator.set(id, operator));
+                        switchCases.forEach(
+                            ({
+                                test: { value: id },
+                                consequent: { 0: { argument: { operator } } },
+                            }) =>
+                                idToOperator.set(id, operator),
+                        );
 
                         const nameBinding =
                             scope.getBinding(name);

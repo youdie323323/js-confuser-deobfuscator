@@ -24,7 +24,7 @@ export default {
     contextedVisitor: context => {
         let pseudoGlobalEntriesObjectName: string;
 
-        const keyToPseudoGlobalEntry: Map<string, PackPseudoGlobalEntry> = new Map;
+        const keyToPseudoGlobalEntry = new Map<string, PackPseudoGlobalEntry>;
 
         return {
             on: isEstimate => {

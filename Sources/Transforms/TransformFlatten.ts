@@ -81,7 +81,7 @@ export default {
                         const { path: bodySecondStatementArgumentCalleeNameBindingPath } = bodySecondStatementArgumentCalleeNameBinding,
                             { node: bodySecondStatementArgumentCalleeNameBindingNode } = bodySecondStatementArgumentCalleeNameBindingPath;
 
-                        const keyToPseudoEntry: Map<string, PseudoFlattenEntry> = new Map;
+                        const keyToPseudoEntry = new Map<string, PseudoFlattenEntry>;
 
                         bodyFirstStatementDeclarationInit.properties.forEach(property => {
                             if (!t.isObjectMethod(property)) return;

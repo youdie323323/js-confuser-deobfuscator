@@ -89,7 +89,7 @@ export default {
                         if (!(switchCases.length !== 0 && switchCases.every(isGlobalConcealingGetFunctionCase)))
                             return;
 
-                        const stringToGlobalIdentifier: Map<string, t.Identifier> = new Map;
+                        const stringToGlobalIdentifier = new Map<string, t.Identifier>;
 
                         switchCases.forEach(({ test: { value: string }, consequent }) => {
                             const { 0: { argument: { property: returnArgumentProperty } } } = consequent;
@@ -103,7 +103,7 @@ export default {
                         });
 
                         if (isNotEstimate) { // Log string to global
-                            const stringToGlobal: Map<string, string> = new Map;
+                            const stringToGlobal = new Map<string, string>;
 
                             stringToGlobalIdentifier.forEach(
                                 (globalIdentifier, string) =>
