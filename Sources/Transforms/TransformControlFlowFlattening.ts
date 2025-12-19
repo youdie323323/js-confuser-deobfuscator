@@ -527,7 +527,7 @@ export default {
                     ) =>
                         flows.map(ourCase => {
                             if (ourCase.test) {
-                                // We"re not going to replace test, because next dynamicComputeSwitchCasesWithFlowPositions call uses test
+                                // We're not going to replace test, because next dynamicComputeSwitchCasesWithFlowPositions call uses test
 
                                 const clonedOurCase = t.cloneNode(ourCase, true);
 

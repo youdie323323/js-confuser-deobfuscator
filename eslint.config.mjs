@@ -1,12 +1,13 @@
 import globals from "globals";
 import tsdoc from "eslint-plugin-tsdoc";
+import { defineConfig } from "eslint/config";
 import tseslint from "typescript-eslint";
 import stylistic from "@stylistic/eslint-plugin";
 import importPlugin from "eslint-plugin-import";
 
 const ALERT_STYLE = "warn";
 
-export default tseslint.config(
+export default defineConfig(
     { files: ["**/*.{ts,tsx}"] },
     importPlugin.flatConfigs.recommended,
     {
@@ -25,6 +26,7 @@ export default tseslint.config(
         },
         plugins: {
             // Lints
+
             tsdoc,
             "@typescript-eslint": tseslint.plugin,
 
@@ -33,6 +35,7 @@ export default tseslint.config(
         },
         rules: {
             // Lints
+
             "no-unused-vars": "off",
             "no-self-assign": "error",
 
@@ -42,6 +45,7 @@ export default tseslint.config(
             "@typescript-eslint/consistent-type-imports": "error",
 
             // Formats
+
             "@stylistic/indent": [ALERT_STYLE, 4],
             "@stylistic/block-spacing": ALERT_STYLE,
             "@stylistic/brace-style": [ALERT_STYLE, "1tbs", { allowSingleLine: true }],
@@ -70,7 +74,7 @@ export default tseslint.config(
             */
             "@stylistic/lines-between-class-members": [ALERT_STYLE, {
                 enforce: [
-                    // I love the blank line for each category fields
+                    // I love the blank line for each category field
                     /*
                     {
                         blankLine: "never",

@@ -19,10 +19,10 @@
         "resolvePackageJsonExports": false,
     },
     "include": [
-        "eslint.config.mjs",
         "Sources/**/*",
         "input/**/*",
         "output/**/*",
-        "Test/**/*",
+        "test/**/*",
+        "eslint.config.mjs",
     ]
 }
