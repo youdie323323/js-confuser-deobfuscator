@@ -81,6 +81,8 @@ export default {
                                                 !t.isIdentifier(param, { name: statementTestArgumentName }),
                                         );
 
+                                    console.log("Moved function declaration:", statementTestArgumentName);
+
                                     context.targetCount--;
                                 } else
                                     context.targetCount++;
@@ -101,7 +103,7 @@ export default {
 
                             for (const constantViolation of paramNameBinding.constantViolations) {
                                 if (!constantViolation.isAssignmentExpression())
-                                    return;
+                                    continue;
 
                                 const {
                                     node: { operator: innerOperator },
@@ -136,6 +138,8 @@ export default {
                                             );
 
                                         context.targetCount--;
+
+                                        console.log("Moved variable:", paramName);
 
                                         break;
                                     } else
