@@ -29,10 +29,10 @@ export function isPredicate(path: NodePath): boolean {
     if (!rightNameBinding)
         return false;
 
-    const { path: nameBindingPath } = rightNameBinding;
+    const { path: rightNameBindingPath } = rightNameBinding;
 
-    if (nameBindingPath.isFunctionDeclaration())
-        return isPredicateFunctionDeclaration(nameBindingPath.node);
+    if (rightNameBindingPath.isFunctionDeclaration())
+        return isPredicateFunctionDeclaration(rightNameBindingPath.node);
 
     return false;
 }

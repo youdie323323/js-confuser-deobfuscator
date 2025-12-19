@@ -9,7 +9,7 @@ import * as readline from "readline";
 
 import transformPack from "./TransformPack";
 import transformASTScrambler from "./TransformASTScrambler";
-import transformMovedDeclarations  from "./TransformMovedDeclarations";
+import transformMovedDeclarations from "./TransformMovedDeclarations";
 import transformControlFlowFlattening from "./TransformControlFlowFlattening";
 import transformShuffle from "./TransformShuffle";
 import transformDuplicateLiteralsRemoval from "./TransformDuplicateLiteralsRemoval";
@@ -20,6 +20,7 @@ import transformOpaquePredicates from "./TransformOpaquePredicates";
 import transformGlobalConcealing from "./TransformGlobalConcealing";
 import transformCalculator from "./TransformCalculator";
 import transformDeadCode from "./TransformDeadCode";
+import transformDispatcher from "./TransformDispatcher";
 import transformFlatten from "./TransformFlatten";
 import transformPreparation from "./TransformPreparation";
 
@@ -48,6 +49,7 @@ export const ALL_TRANSFORMS: ReadonlyArray<Transform> = [
     transformGlobalConcealing,
     transformCalculator,
     transformDeadCode,
+    transformDispatcher,
     transformFlatten,
     transformPreparation,
 ];

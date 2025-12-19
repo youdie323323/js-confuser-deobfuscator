@@ -294,7 +294,7 @@ export default {
                         console.log(`Found table: "${tableValue}"`);
 
                     const innerDecode = (chars: string) => {
-                        const decodedBuffer: Array<number> = new Array;
+                        const decodedBuffer = new Array<number>;
 
                         let b = 0,
                             n = 0,

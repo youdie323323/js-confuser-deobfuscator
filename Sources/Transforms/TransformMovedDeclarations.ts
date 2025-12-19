@@ -93,8 +93,8 @@ export default {
 
                         params.forEach(param => {
                             /*
-                                Simplifying the default paramter is irreversible
-                            
+                                The default paramter is irreversible
+
                                 ```js
                                 function greet(name) {
                                   var c = 1;
@@ -106,12 +106,12 @@ export default {
                                   }
                                   breet(output);
                                 }
-                            
+
                                 greet('Internet User');
                                 ```
-                            
+
                                 to
-                            
+
                                 ```js
                                 function greet(name, c = 1, output, breet) {
                                   if (!breet) {
@@ -125,9 +125,9 @@ export default {
                                   breet(output);
                                 }
                                 greet("Internet User");
-                            ```
+                                ```
 
-                            If we have default parameter after deleted parameters, we can simplify it, but it's not true
+                                If we have default parameter after deleted parameters, we can simplify it, but it's not true
                             */
 
                             if (!t.isIdentifier(param))
