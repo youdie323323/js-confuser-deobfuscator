@@ -51,7 +51,7 @@ export const ALL_TRANSFORMS: ReadonlyArray<Transform> = [
     transformDeadCode,
     transformDispatcher,
     transformFlatten,
-    //transformPreparation,
+    transformPreparation,
 ];
 
 /**
