@@ -71,7 +71,8 @@ export default {
                                         console.log("Psuedo global entries object name:", pseudoGlobalEntriesObjectName);
 
                                         lastStatementArgumentsLast.properties.forEach(property => {
-                                            if (!t.isObjectMethod(property)) return;
+                                            if (!t.isObjectMethod(property))
+                                                return;
 
                                             let propertyKey: string;
 
