@@ -15,6 +15,9 @@ interface ArgumentsMember {
 }
 
 export const containerContainsExpression = (containerPath: NodePath, targetNode: t.Node): boolean => {
+    if (containerPath.isFunction())
+        return false;
+
     const { node: container } = containerPath;
 
     const { node: containerPathFunctionParentNode } = containerPath.getFunctionParent();

@@ -1,6 +1,7 @@
 import { type Transform } from "./Transform";
 import * as t from "@babel/types";
-import { containerContainsExpression, isForLoopInitializer, isForStatementInitNodePath, isForXStatementLeftNodePath } from "./TransformVariableMasking";
+import { containerContainsExpression, isForStatementInitNodePath } from "./TransformVariableMasking";
+import { isOperatorJsConfuserSlowAssignmentOperator } from "./String/TransformStringConcealing";
 
 type FunctionExpressionAssignmentExpression = t.AssignmentExpression & {
     left: t.Identifier;
@@ -222,7 +223,7 @@ export default {
                                     parentPath: innerParentPath,
                                 } = constantViolation;
 
-                                if (constantViolationOperator !== "=")
+                                if (!isOperatorJsConfuserSlowAssignmentOperator(constantViolationOperator))
                                     continue;
 
                                 const isInnerParentPathExpressionStatement = innerParentPath.isExpressionStatement(),

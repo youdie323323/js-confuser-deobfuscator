@@ -2,6 +2,10 @@ import type { Transform } from "../Transform";
 import * as t from "@babel/types";
 import type { NodePath } from "@babel/traverse";
 
+export const isOperatorJsConfuserSlowAssignmentOperator =
+    (operator: t.AssignmentExpression["operator"]): operator is "=" | "||=" =>
+        operator === "=" || operator === "||=";
+
 /**
  * Restores init of VariableDeclarator.
  * 
@@ -37,11 +41,7 @@ export function restoreVariableDeclaratorInit(varaibleDeclaratorPath: NodePath<t
 
         const { node: constantViolationNode } = constantViolation;
 
-        if (!(
-            constantViolationNode.operator === "=" ||
-            constantViolationNode.operator === "||=" ||
-            constantViolationNode.operator === "??="
-        ))
+        if (!isOperatorJsConfuserSlowAssignmentOperator(constantViolationNode.operator))
             continue;
 
         varaibleDeclaratorPath.get("init")
@@ -277,21 +277,22 @@ export default {
 
                     // We assume decodeFunctionNameBindingNode is the decode function without analyzing body
 
-                    const { body: { body: decodeFunctionNameBindingNodeBody } } = decodeFunctionNameBindingNode;
+                    let tableValue: string;
 
-                    const { 0: decodeFunctionNameBindingNodeBodyFirstStatement } = decodeFunctionNameBindingNodeBody;
+                    decodeFunctionNameBindingPath.traverse({
+                        StringLiteral(path) { // tableValue is only StringLiteral in the decode function
+                            const { node: { value } } = path;
 
-                    if (!(
-                        t.isVariableDeclaration(decodeFunctionNameBindingNodeBodyFirstStatement) &&
-                        decodeFunctionNameBindingNodeBodyFirstStatement.declarations.length > 0 &&
-                        t.isIdentifier(decodeFunctionNameBindingNodeBodyFirstStatement.declarations[0].id) &&
-                        decodeFunctionNameBindingNodeBodyFirstStatement.declarations[0].init &&
-                        t.isStringLiteral(decodeFunctionNameBindingNodeBodyFirstStatement.declarations[0].init)
-                    ))
+                            if (value.length === 91) {
+                                tableValue = value;
+
+                                path.stop();
+                            }
+                        },
+                    });
+
+                    if (!tableValue)
                         return;
-
-                    const { declarations: { 0: { init: { value: tableValue } } } } =
-                        decodeFunctionNameBindingNodeBodyFirstStatement;
 
                     if (isNotEstimate)
                         console.log(`Found table: "${tableValue}"`);
