@@ -31,7 +31,6 @@ async function iterateBooleanOptionsCombinations(
     }
 }
 
-
 const LOG_FILE_PATH = path.join(__dirname, "failed_options.jsonl");
 
 interface Failure {

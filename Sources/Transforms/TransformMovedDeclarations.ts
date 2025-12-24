@@ -178,7 +178,7 @@ export default {
 
                                     if (isUsedBeforeForXStatement) {
                                         if (isNotEstimate)
-                                            console.log(`Variable ${paramName} is used before for-in/for-of statement`);
+                                            console.log(`Variable ${paramName} is used before for-x statement`);
 
                                         continue;
                                     }
@@ -199,7 +199,7 @@ export default {
                                                     !t.isIdentifier(innerParam, { name: paramName }),
                                             );
 
-                                        console.log("Moved variable (forX):", paramName);
+                                        console.log("Moved variable (for-x):", paramName);
 
                                         context.targetCount--;
 
