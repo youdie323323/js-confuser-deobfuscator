@@ -641,7 +641,7 @@ export default {
 
                                 if (isNotFakeFlowWithContext(flowWithContext))
                                     return flowWithContext;
-                                else // Fake... TODO: include this information in branch information
+                                else // Fake... TODO: include this in branch information
                                     return defaultFlowWithContext;
                             }
 
@@ -664,7 +664,7 @@ export default {
                         const flowBlockBody = new Array<t.Statement>;
 
                         for (const statement of consequent) {
-                            if ( // ConstantHolderInternalProperty[...] = function (...) { return cff(...).next().value; }
+                            if ( // ConstantHolderInternalProperty[...] = function (...) { return ControlFlowFunction(...).next().value; }
                                 t.isExpressionStatement(statement) &&
                                 t.isAssignmentExpression(statement.expression) &&
                                 t.isFunctionExpression(statement.expression.right)

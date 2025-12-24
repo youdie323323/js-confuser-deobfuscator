@@ -97,7 +97,7 @@ export default {
 
                         params.forEach(param => {
                             /*
-                                The default paramter is irreversible
+                                Default paramter is irreversible
 
                                 ```js
                                 function greet(name) {

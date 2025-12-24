@@ -150,57 +150,61 @@ export default {
                         });
 
                         const {
+                            params: bodyLastStatementArgumentCalleeNameBindingNodeParams,
                             params: { length: bodyLastStatementArgumentCalleeNameBindingNodeParamsLength },
-                            body: { body: bodyLastStatementArgumentCalleeNameBindingNodeBody },
+                            body: {
+                                body: bodyLastStatementArgumentCalleeNameBindingNodeBody,
+                                directives: bodyLastStatementArgumentCalleeNameBindingNodeBodyDirectives,
+                            },
                         } = bodyLastStatementArgumentCalleeNameBindingNode;
 
                         let bodySecondStatementArgumentCalleeNameBindingNodeCloned: t.FunctionDeclaration;
 
-                        switch (bodyLastStatementArgumentCalleeNameBindingNodeParamsLength) {
-                            case 0: {
-                                // Use strict enabled, directives are not removed
+                        const { 0: bodyLastStatementArgumentCalleeNameBindingNodeBodyFirstStatement } =
+                            bodyLastStatementArgumentCalleeNameBindingNodeBody;
 
-                                if (t.isVariableDeclaration(bodyLastStatementArgumentCalleeNameBindingNodeBody[0])) {
-                                    const argumentsArrayPattern =
-                                        bodyLastStatementArgumentCalleeNameBindingNodeBody[0].declarations
-                                            .find(
-                                                ({ id }) =>
-                                                    t.isArrayPattern(id) &&
-                                                    id.elements.length === 2 &&
-                                                    t.isArrayPattern(id.elements[0]) &&
-                                                    t.isIdentifier(id.elements[1]),
-                                            ) as t.VariableDeclarator & {
-                                                id: t.ArrayPattern & {
-                                                    elements: [
-                                                        t.ArrayPattern,
-                                                        t.Identifier,
-                                                    ];
-                                                };
-                                            } | undefined;
-                                    if (!argumentsArrayPattern)
-                                        return;
+                        const isUseStrictEnabled =
+                            (
+                                bodyLastStatementArgumentCalleeNameBindingNodeParamsLength === 0 ||
+                                (
+                                    bodyLastStatementArgumentCalleeNameBindingNodeParamsLength > 0 &&
+                                    !t.isArrayPattern(bodyLastStatementArgumentCalleeNameBindingNodeParams[0])
+                                )
+                            ) &&
+                            bodyLastStatementArgumentCalleeNameBindingNodeBodyDirectives.length > 0 &&
+                            t.isVariableDeclaration(bodyLastStatementArgumentCalleeNameBindingNodeBodyFirstStatement);
 
-                                    const { id: { elements: argumentsArrayPatternIdElements } } = argumentsArrayPattern;
-
-                                    // With strict mode enabled, this causes error when generate this, 
-                                    // but in the case we won't generate this, so this is safe to do
-                                    bodyLastStatementArgumentCalleeNameBindingNode.params =
-                                        argumentsArrayPatternIdElements;
-
-                                    bodyLastStatementArgumentCalleeNameBindingNode.body.body.shift();
-
-                                    bodySecondStatementArgumentCalleeNameBindingNodeCloned =
-                                        t.cloneNode(bodyLastStatementArgumentCalleeNameBindingNode, true);
-                                }
-
-                                break;
-                            }
-
-                            case 2: // Normal
-                                break;
-
-                            default:
+                        if (isUseStrictEnabled) { // Use strict enabled, directives are not removed
+                            const argumentsArrayPattern =
+                                bodyLastStatementArgumentCalleeNameBindingNodeBodyFirstStatement.declarations
+                                    .find(
+                                        ({ id }) =>
+                                            t.isArrayPattern(id) &&
+                                            id.elements.length === 2 &&
+                                            t.isArrayPattern(id.elements[0]) &&
+                                            t.isIdentifier(id.elements[1]),
+                                    ) as t.VariableDeclarator & {
+                                        id: t.ArrayPattern & {
+                                            elements: [
+                                                t.ArrayPattern,
+                                                t.Identifier,
+                                            ];
+                                        };
+                                    } | undefined;
+                            if (!argumentsArrayPattern)
                                 return;
+
+                            const { id: { elements: argumentsArrayPatternIdElements } } = argumentsArrayPattern;
+
+                            // With strict mode enabled, this causes error when generate this, 
+                            // but in the case we won't generate this, so this is safe to do
+                            bodyLastStatementArgumentCalleeNameBindingNode.params =
+                                argumentsArrayPatternIdElements;
+
+                            bodyLastStatementArgumentCalleeNameBindingNode.body.body.shift();
+
+                            bodySecondStatementArgumentCalleeNameBindingNodeCloned =
+                                t.cloneNode(bodyLastStatementArgumentCalleeNameBindingNode, true);
                         }
 
                         const {
@@ -319,7 +323,7 @@ export default {
                         } else {
                             context.targetCount++;
 
-                            if (bodyLastStatementArgumentCalleeNameBindingNodeParamsLength === 0) // Restore it back
+                            if (bodySecondStatementArgumentCalleeNameBindingNodeCloned) // Restore it back
                                 bodyLastStatementArgumentCalleeNameBindingPath
                                     .replaceWith(bodySecondStatementArgumentCalleeNameBindingNodeCloned);
                         }
